@@ -130,7 +130,7 @@ def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> Dict[str, Any
         client = anthropic.Anthropic()
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
-            max_tokens=1024,
+            max_tokens=4096,
             messages=[
                 {
                     "role": "user",
