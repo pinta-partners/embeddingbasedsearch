@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Torah Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        select, input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Torah Search Engine</h1>
+    <form id="searchForm">
+        <div class="form-group">
+            <label for="query">Search Query:</label>
+            <input type="text" id="query" name="query" required>
+        </div>
+
+        <div class="form-group">
+            <label for="book">Select Book:</label>
+            <select id="book" name="book" required>
+                <option value="">Select a Book</option>
+                <option value="bereishis">בראשית / Bereishis</option>
+                <option value="shemos">שמות / Shemos</option>
+                <option value="vayikra">ויקרא / Vayikra</option>
+                <option value="bamidbar">במדבר / Bamidbar</option>
+                <option value="devarim">דברים / Devarim</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="parsha">Select Parsha:</label>
+            <select id="parsha" name="parsha" disabled>
+                <option value="">First select a book</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="topK">Number of Results:</label>
+            <input type="number" id="topK" name="topK" value="10" min="1" max="100">
+        </div>
+
+        <button type="submit">Search</button>
+    </form>
+
+    <div id="results"></div>
+
+    <script>
+        const torahStructure = {
+            bereishis: {
+                name: 'בראשית / Bereishis',
+                parshiot: ['bereshis1', 'bereshis2']
+            },
+            shemos: {
+                name: 'שמות / Shemos',
+                parshiot: ['beshalach1', 'beshalach2', 'bo', 'ki_sisa', 'mishpatim', 'pekudei', 'shemos', 'terumah', 'tetzaveh', 'vaera', 'vayakhel', 'yisro']
+            },
+            vayikra: {
+                name: 'ויקרא / Vayikra',
+                parshiot: ['vayikra1', 'vayikra2']
+            },
+            bamidbar: {
+                name: 'במדבר / Bamidbar',
+                parshiot: ['bamidbar2', 'bmidbar1']
+            },
+            devarim: {
+                name: 'דברים / Devarim',
+                parshiot: ['davraim1']
+            }
+        };
+
+        const bookSelect = document.getElementById('book');
+        const parshaSelect = document.getElementById('parsha');
+
+        bookSelect.addEventListener('change', function() {
+            const selectedBook = this.value;
+            parshaSelect.innerHTML = '<option value="">Select a Parsha</option>';
+            
+            if (selectedBook && torahStructure[selectedBook]) {
+                parshaSelect.disabled = false;
+                torahStructure[selectedBook].parshiot.forEach(parsha => {
+                    const option = document.createElement('option');
+                    option.value = parsha;
+                    option.textContent = parsha;
+                    parshaSelect.appendChild(option);
+                });
+            } else {
+                parshaSelect.disabled = true;
+            }
+        });
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Search request failed');
+                }
+
+                const result = await response.json();
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <h2>Search Results</h2>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Search error:', error);
+                document.getElementById('results').innerHTML = `
+                    <p style="color: red;">Error performing search: ${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
