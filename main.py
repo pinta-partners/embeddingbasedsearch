@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify
-import asyncio
 import json
 import os
 from pathlib import Path
@@ -10,8 +9,9 @@ from scipy.spatial.distance import cosine
 from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModel
 import torch
+import anthropic
 
-# --- configuration (Keep this consistent with indexer.py) ---
+# Configuration remains the same
 CONFIG = {
     "base_output_dir": "torah_search_data",
     "max_tokens": 512,
@@ -19,9 +19,6 @@ CONFIG = {
     "model_name": "dicta-il/BEREL_2.0",
 }
 
-# Full mapping for the Torah books based on your folder hierarchy.
-# The keys are the values coming from the HTML form (all lowercase),
-# and the values are the actual directory names.
 BOOK_DIR_MAPPING = {
     "bamidbar": "Bamidbar",
     "bereishis": "Bereshit",
@@ -32,27 +29,10 @@ BOOK_DIR_MAPPING = {
 
 app = Flask(__name__)
 
+# Helper functions remain the same
 def get_output_dir(chumash: str, parsha: str) -> Path:
-    # Convert the provided book (chumash) to the actual directory name using the mapping.
     mapped_chumash = BOOK_DIR_MAPPING.get(chumash.lower(), chumash)
     return Path(CONFIG["base_output_dir"]) / mapped_chumash / parsha
-
-# --- Search Functions ---
-
-def load_single_index(index_dir: Path) -> Tuple[List[Dict[str, Any]], np.ndarray, str, str]:
-    metadata_file = index_dir / "metadata.json"
-    embeddings_file = index_dir / "embeddings.npy"
-
-    if not metadata_file.exists() or not embeddings_file.exists():
-        raise FileNotFoundError(f"Index files not found in {index_dir}")
-
-    with open(metadata_file, "r", encoding="utf-8") as f:
-        metadata = json.load(f)
-    embeddings = np.load(embeddings_file)
-    # Expect the metadata to store the actual book and parsha names.
-    chumash = metadata["paragraphs"][0]["chumash"]
-    parsha = metadata["paragraphs"][0]["parsha"]
-    return metadata["paragraphs"], embeddings, chumash, parsha
 
 def load_search_data(chumash: Optional[str] = None, parsha: Optional[str] = None) -> List[Tuple[List[Dict[str, Any]], np.ndarray, str, str]]:
     print("Loading search data...")
@@ -64,7 +44,6 @@ def load_search_data(chumash: Optional[str] = None, parsha: Optional[str] = None
         index_dir = get_output_dir(chumash, parsha)
         return [load_single_index(index_dir)]
     elif chumash:
-        # Map the provided book to the correct directory.
         mapped_chumash = BOOK_DIR_MAPPING.get(chumash.lower(), chumash)
         chumash_dir = base_path / mapped_chumash
         if not chumash_dir.exists():
@@ -128,7 +107,55 @@ def prepare_search_results(matches: List[Tuple[Dict[str, Any], float, str, str]]
     }
     return "\n".join(text_content), claude_doc
 
-async def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Optional[str] = None, top_k: int = 20, skip_claude: bool = False) -> Tuple[str, Dict[str, Any]]:
+def load_single_index(index_dir: Path) -> Tuple[List[Dict[str, Any]], np.ndarray, str, str]:
+    metadata_file = index_dir / "metadata.json"
+    embeddings_file = index_dir / "embeddings.npy"
+
+    if not metadata_file.exists() or not embeddings_file.exists():
+        raise FileNotFoundError(f"Index files not found in {index_dir}")
+
+    with open(metadata_file, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+    embeddings = np.load(embeddings_file)
+    chumash = metadata["paragraphs"][0]["chumash"]
+    parsha = metadata["paragraphs"][0]["parsha"]
+    return metadata["paragraphs"], embeddings, chumash, parsha
+
+# Modified to be synchronous
+def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get analysis from Claude API using the search results.
+    """
+    try:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        claude_doc,
+                        {
+                            "type": "text",
+                            "text": f"Please analyze these Torah passages in relation to the query: {query}. "
+                                   "Provide insights about the connections between the passages and explain their relevance "
+                                   "to the query. Use citations to support your analysis."
+                        }
+                    ]
+                }
+            ]
+        )
+        # Extract the text content from the response
+        if hasattr(response.content[0], 'text'):
+            return response.content[0].text
+        return str(response.content)
+    except Exception as e:
+        print(f"Error calling Claude API: {e}")
+        return {"error": str(e)}
+
+# Modified to be synchronous
+def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Optional[str] = None, top_k: int = 20, skip_claude: bool = False) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     try:
         sources_data = load_search_data(chumash, parsha)
         if not sources_data:
@@ -155,10 +182,16 @@ async def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: 
 
         if not all_matches:
             print("\nNo matches found!")
-            return "", {}
+            return "", {}, {}
 
         text_content, claude_doc = prepare_search_results(all_matches, query)
-        return text_content, claude_doc
+
+        # Get Claude's analysis if not skipped
+        claude_analysis = {}
+        if not skip_claude:
+            claude_analysis = get_claude_analysis(query, claude_doc)
+
+        return text_content, claude_doc, claude_analysis
 
     except Exception as e:
         print(f"\nError during search: {e}")
@@ -168,23 +201,35 @@ async def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: 
 def home():
     return render_template("home.html")
 
+# Modified to be synchronous
 @app.route("/api/search", methods=["POST"])
-async def handle_search():
-    data = request.get_json()
-    query = data.get("query")
-    # Use 'book' (or 'chumash') from the form submission.
-    chumash = data.get("chumash") or data.get("book")
-    parsha = data.get("parsha")
-    top_k = int(data.get("topK", 20))
-    
+def handle_search():
     try:
-        result = await search_and_analyze(query, chumash, parsha, top_k, skip_claude=True)
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+
+        query = data.get("query")
+        if not query:
+            return jsonify({"error": "No query provided"}), 400
+
+        chumash = data.get("chumash") or data.get("book")
+        parsha = data.get("parsha")
+        top_k = int(data.get("topK", 20))
+        skip_claude = data.get("skipClaude", False)
+
+        text_content, claude_doc, claude_analysis = search_and_analyze(
+            query, chumash, parsha, top_k, skip_claude
+        )
+
         return jsonify({
-            "results": result[0],
-            "analysis": result[1]
+            "results": text_content,
+            "document": claude_doc,
+            "analysis": claude_analysis
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error in handle_search: {str(e)}")
+        return jsonify({"error": f"Search request failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
     load_dotenv()
