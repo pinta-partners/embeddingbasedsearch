@@ -5,10 +5,18 @@ run = "python main.py"
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Run"
+runButton = "Run Flask"
 
 [[workflows.workflow]]
 name = "Run"
+author = 22737092
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+
+[[workflows.workflow]]
+name = "Run Flask"
 author = 22737092
 
 [[workflows.workflow.tasks]]
