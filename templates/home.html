@@ -75,6 +75,13 @@
             <input type="number" id="topK" name="topK" value="10" min="1" max="100">
         </div>
 
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="skipClaude" name="skipClaude">
+                Skip Claude Analysis
+            </label>
+        </div>
+
         <button type="submit">Search</button>
     </form>
 
@@ -146,7 +153,11 @@
                 const resultsDiv = document.getElementById('results');
                 resultsDiv.innerHTML = `
                     <h2>Search Results</h2>
-                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                    <pre>${result.results}</pre>
+                    ${result.analysis ? `
+                        <h2>Claude's Analysis</h2>
+                        <pre>${result.analysis}</pre>
+                    ` : ''}
                 `;
             } catch (error) {
                 console.error('Search error:', error);
