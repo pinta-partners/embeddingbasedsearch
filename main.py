@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+import logging
 import traceback
 import json
 import os
@@ -11,6 +11,16 @@ from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModel
 import torch
 import anthropic
+
+from flask import Flask, render_template, request, jsonify
+
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
 
 # Configuration remains the same
 CONFIG = {
@@ -30,26 +40,28 @@ BOOK_DIR_MAPPING = {
 
 app = Flask(__name__)
 
-# Helper functions remain the same
 def get_output_dir(chumash: str, parsha: str) -> Path:
     mapped_chumash = BOOK_DIR_MAPPING.get(chumash.lower(), chumash)
     return Path(CONFIG["base_output_dir"]) / mapped_chumash / parsha
 
 def load_search_data(chumash: Optional[str] = None, parsha: Optional[str] = None) -> List[Tuple[List[Dict[str, Any]], np.ndarray, str, str]]:
-    print("Loading search data...")
+    logger.info("Loading search data...")
     base_path = Path(CONFIG["base_output_dir"])
     if not base_path.exists():
         raise FileNotFoundError(f"Base directory not found: {base_path}")
 
     if chumash and parsha:
         index_dir = get_output_dir(chumash, parsha)
+        logger.debug(f"Loading single index from {index_dir}")
         return [load_single_index(index_dir)]
     elif chumash:
         mapped_chumash = BOOK_DIR_MAPPING.get(chumash.lower(), chumash)
         chumash_dir = base_path / mapped_chumash
         if not chumash_dir.exists():
             raise FileNotFoundError(f"Chumash directory not found: {mapped_chumash}")
-        return [load_single_index(d) for d in chumash_dir.iterdir() if d.is_dir()]
+        indexes = [load_single_index(d) for d in chumash_dir.iterdir() if d.is_dir()]
+        logger.debug(f"Loaded {len(indexes)} indexes for chumash {chumash}")
+        return indexes
     else:
         all_data = []
         for chumash_dir in base_path.iterdir():
@@ -59,7 +71,8 @@ def load_search_data(chumash: Optional[str] = None, parsha: Optional[str] = None
                         try:
                             all_data.append(load_single_index(parsha_dir))
                         except Exception as e:
-                            print(f"Error loading {parsha_dir}: {e}")
+                            logger.error(f"Error loading {parsha_dir}: {e}")
+        logger.debug(f"Total indexes loaded: {len(all_data)}")
         return all_data
 
 def find_similar_paragraphs(query_emb: np.ndarray, paragraphs: List[Dict[str, Any]], stored_embeds: np.ndarray, chumash: str, parsha: str, top_k: int) -> List[Tuple[Dict[str, Any], float, str, str]]:
@@ -122,49 +135,64 @@ def load_single_index(index_dir: Path) -> Tuple[List[Dict[str, Any]], np.ndarray
     parsha = metadata["paragraphs"][0]["parsha"]
     return metadata["paragraphs"], embeddings, chumash, parsha
 
-# Modified to be synchronous
-def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> Dict[str, Any]:
+def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> str:
     """
     Get analysis from Claude API using the search results.
     """
     try:
         client = anthropic.Anthropic()
+        # Combine the document and instruction into a single prompt string
+        prompt = f"{json.dumps(claude_doc, indent=2)}\n\nPlease analyze these Torah passages in relation to the query: {query}. " \
+                 "Provide insights about the connections between the passages and explain their relevance to the query. " \
+                 "Use citations to support your analysis."
+        logger.debug("Sending prompt to Claude API:")
+        logger.debug(prompt)
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=4096,
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        claude_doc,
-                        {
-                            "type": "text",
-                            "text": f"Please analyze these Torah passages in relation to the query: {query}. "
-                                   "Provide insights about the connections between the passages and explain their relevance "
-                                   "to the query. Use citations to support your analysis."
-                        }
-                    ]
+                    "content": prompt
                 }
             ]
         )
-        # Extract and properly format the text content from the response
-        if response.content and len(response.content) > 0:
-            analysis = response.content[0].text
+        logger.debug("Received response from Claude API:")
+        logger.debug(response)
+
+        if response and response.content:
+            if isinstance(response.content, list):
+                # For each message, try attribute access first; if that fails, try dict.get
+                analysis_parts = []
+                for msg in response.content:
+                    if hasattr(msg, "text"):
+                        analysis_parts.append(msg.text)
+                    elif isinstance(msg, dict):
+                        analysis_parts.append(msg.get("text", ""))
+                    else:
+                        analysis_parts.append("")
+                analysis = "\n".join(analysis_parts)
+            else:
+                analysis = response.content
+            logger.info("Claude analysis received successfully")
             return analysis.strip()
-        return "No analysis available"
+        else:
+            logger.warning("No analysis content received from Claude API")
+            return "No analysis available"
     except Exception as e:
-        print(f"Error calling Claude API: {e}")
-        traceback.print_exc()
+        logger.error(f"Error calling Claude API: {e}")
+        logger.debug(traceback.format_exc())
         return f"Error: {str(e)}"
 
-# Modified to be synchronous
-def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Optional[str] = None, top_k: int = 20, skip_claude: bool = False) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
+def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Optional[str] = None, top_k: int = 20, skip_claude: bool = False) -> Tuple[str, Dict[str, Any], str]:
     try:
+        logger.info("Starting search and analysis")
         sources_data = load_search_data(chumash, parsha)
         if not sources_data:
             raise ValueError("No search data found matching the specified criteria")
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logger.debug(f"Using device: {device}")
         tokenizer = AutoTokenizer.from_pretrained(CONFIG["model_name"])
         model = AutoModel.from_pretrained(CONFIG["model_name"]).to(device)
         model.eval()
@@ -177,43 +205,50 @@ def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Option
             return outputs.last_hidden_state.mean(dim=1)[0].cpu().numpy()
 
         query_emb = get_query_embedding(query)
+        logger.debug("Query embedding computed")
         all_matches = []
 
         for paragraphs, stored_embeds, src_chumash, src_parsha in sources_data:
             matches = find_similar_paragraphs(query_emb, paragraphs, stored_embeds, src_chumash, src_parsha, top_k)
             all_matches.extend(matches)
+            logger.debug(f"Found {len(matches)} matches in {src_chumash}/{src_parsha}")
 
         if not all_matches:
-            print("\nNo matches found!")
-            return "", {}, {}
+            logger.info("No matches found!")
+            return "", {}, "No analysis available"
 
         text_content, claude_doc = prepare_search_results(all_matches, query)
+        logger.debug("Prepared search results and document for Claude analysis")
 
-        # Get Claude's analysis if not skipped
-        claude_analysis = {}
+        claude_analysis = ""
         if not skip_claude:
+            logger.info("Calling Claude API for analysis")
             claude_analysis = get_claude_analysis(query, claude_doc)
+        else:
+            logger.info("Skipping Claude analysis as per user request")
 
         return text_content, claude_doc, claude_analysis
 
     except Exception as e:
-        print(f"\nError during search: {e}")
+        logger.error(f"Error during search: {e}")
+        logger.debug(traceback.format_exc())
         raise
 
 @app.route("/", methods=["GET"])
 def home():
     return render_template("home.html")
 
-# Modified to be synchronous
 @app.route("/api/search", methods=["POST"])
 def handle_search():
     try:
         data = request.get_json()
         if not data:
+            logger.error("No JSON data received")
             return jsonify({"error": "No JSON data received"}), 400
 
         query = data.get("query")
         if not query:
+            logger.error("No query provided")
             return jsonify({"error": "No query provided"}), 400
 
         chumash = data.get("chumash") or data.get("book")
@@ -221,6 +256,7 @@ def handle_search():
         top_k = int(data.get("topK", 20))
         skip_claude = data.get("skipClaude", False)
 
+        logger.info(f"Handling search for query: {query}")
         text_content, claude_doc, claude_analysis = search_and_analyze(
             query, chumash, parsha, top_k, skip_claude
         )
@@ -231,7 +267,7 @@ def handle_search():
             "analysis": claude_analysis
         })
     except Exception as e:
-        print(f"Error in handle_search: {str(e)}")
+        logger.error(f"Error in handle_search: {str(e)}")
         return jsonify({"error": f"Search request failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
