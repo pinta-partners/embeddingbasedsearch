@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+import traceback
 import json
 import os
 from pathlib import Path
@@ -146,11 +147,15 @@ def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> Dict[str, Any
                 }
             ]
         )
-        # Extract the text content from the response
-        return response.content[0].text if response.content else "No analysis available"
+        # Extract and properly format the text content from the response
+        if response.content and len(response.content) > 0:
+            analysis = response.content[0].text
+            return analysis.strip()
+        return "No analysis available"
     except Exception as e:
         print(f"Error calling Claude API: {e}")
-        return {"error": str(e)}
+        traceback.print_exc()
+        return f"Error: {str(e)}"
 
 # Modified to be synchronous
 def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Optional[str] = None, top_k: int = 20, skip_claude: bool = False) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
