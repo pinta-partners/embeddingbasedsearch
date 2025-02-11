@@ -1,0 +1,75 @@
+Collecting charset-normalizer<4,>=2 (from requests->transformers)
+  Using cached charset_normalizer-3.4.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (35 kB)
+Collecting urllib3<3,>=1.21.1 (from requests->transformers)
+  Using cached urllib3-2.3.0-py3-none-any.whl.metadata (6.5 kB)
+Downloading tqdm-4.67.1-py3-none-any.whl (78 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 78.5/78.5 kB 1.7 MB/s eta 0:00:00
+Using cached transformers-4.48.3-py3-none-any.whl (9.7 MB)
+Downloading anthropic-0.45.2-py3-none-any.whl (222 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 222.8/222.8 kB 12.0 MB/s eta 0:00:00
+Using cached python_dotenv-1.0.1-py3-none-any.whl (19 kB)
+Using cached scipy-1.15.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (40.2 MB)
+Using cached torch-2.6.0-cp312-cp312-manylinux1_x86_64.whl (766.6 MB)
+Using cached nvidia_cublas_cu12-12.4.5.8-py3-none-manylinux2014_x86_64.whl (363.4 MB)
+Using cached nvidia_cuda_cupti_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (13.8 MB)
+Using cached nvidia_cuda_nvrtc_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (24.6 MB)
+Using cached nvidia_cuda_runtime_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (883 kB)
+Downloading nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl (664.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━╸━━━━━━━━━━━━ 463.1/664.8 MB 5.9 MB/s eta 0:00:35
+ERROR: Exception:
+Traceback (most recent call last):
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_vendor/urllib3/response.py", line 438, in _error_catcher
+    yield
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_vendor/urllib3/response.py", line 561, in read
+    data = self._fp_read(amt) if not fp_closed else b""
+           ^^^^^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_vendor/urllib3/response.py", line 527, in _fp_read
+    return self._fp.read(amt) if amt is not None else self._fp.read()
+           ^^^^^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_vendor/cachecontrol/filewrapper.py", line 102, in read
+    self.__buf.write(data)
+  File "/nix/store/zv1kaq7f1q20x62kbjv6pfjygw5jmwl6-python3-3.12.7/lib/python3.12/tempfile.py", line 499, in func_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 122] Disk quota exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/cli/base_command.py", line 180, in exc_logging_wrapper
+    status = run_func(*args)
+             ^^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/cli/req_command.py", line 245, in wrapper
+    return func(self, options, args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/commands/install.py", line 377, in run
+    requirement_set = resolver.resolve(
+                      ^^^^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/resolution/resolvelib/resolver.py", line 179, in resolve
+    self.factory.preparer.prepare_linked_requirements_more(reqs)
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/operations/prepare.py", line 552, in prepare_linked_requirements_more
+    self._complete_partial_requirements(
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/operations/prepare.py", line 467, in _complete_partial_requirements
+    for link, (filepath, _) in batch_download:
+                               ^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/network/download.py", line 183, in __call__
+    for chunk in chunks:
+                 ^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/cli/progress_bars.py", line 53, in _rich_progress_bar
+    for chunk in iterable:
+                 ^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_internal/network/utils.py", line 63, in response_chunks
+    for chunk in response.raw.stream(
+                 ^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_vendor/urllib3/response.py", line 622, in stream
+    data = self.read(amt=amt, decode_content=decode_content)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_vendor/urllib3/response.py", line 560, in read
+    with self._error_catcher():
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/zv1kaq7f1q20x62kbjv6pfjygw5jmwl6-python3-3.12.7/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/nix/store/z0gpy18cc2s8i3y31vhad6acqvcaw6c9-python3.12-pip-24.0/lib/python3.12/site-packages/pip/_vendor/urllib3/response.py", line 455, in _error_catcher
+    raise ProtocolError("Connection broken: %r" % e, e)
+pip._vendor.urllib3.exceptions.ProtocolError: ("Connection broken: OSError(122, 'Disk quota exceeded')", OSError(122, 'Disk quota exceeded'))
+exit status 2
