@@ -147,9 +147,7 @@ def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> Dict[str, Any
             ]
         )
         # Extract the text content from the response
-        if hasattr(response.content[0], 'text'):
-            return response.content[0].text
-        return str(response.content)
+        return response.content[0].text if response.content else "No analysis available"
     except Exception as e:
         print(f"Error calling Claude API: {e}")
         return {"error": str(e)}
