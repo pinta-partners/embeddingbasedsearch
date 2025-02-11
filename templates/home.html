@@ -41,6 +41,16 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+        .analysis-container {
+            max-width: 100%;
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+        .analysis-container pre {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -156,7 +166,9 @@
                     <pre>${result.results}</pre>
                     ${result.analysis ? `
                         <h2>Claude's Analysis</h2>
-                        <pre>${result.analysis}</pre>
+                        <div class="analysis-container">
+                            <pre style="white-space: pre-wrap; word-wrap: break-word;">${result.analysis}</pre>
+                        </div>
                     ` : ''}
                 `;
             } catch (error) {
