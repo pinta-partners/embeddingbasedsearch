@@ -182,7 +182,7 @@
                 const analysisHtml = result.analysis 
                     ? `<h2>Claude's Analysis</h2>
                        <div class="analysis-container">
-                           <pre style="white-space: pre-wrap; word-wrap: break-word;">${result.analysis.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                           <pre style="white-space: pre-wrap; word-wrap: break-word;">${JSON.stringify(result.analysis, null, 2)}</pre>
                        </div>`
                     : '';
 
