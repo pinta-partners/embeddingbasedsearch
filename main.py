@@ -135,16 +135,16 @@ def load_single_index(index_dir: Path) -> Tuple[List[Dict[str, Any]], np.ndarray
     parsha = metadata["paragraphs"][0]["parsha"]
     return metadata["paragraphs"], embeddings, chumash, parsha
 
-def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 150000) -> List[Dict[str, Any]]:
-    """Split document into chunks while keeping paragraphs intact."""
+def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 50000) -> List[Dict[str, Any]]:
+    """Split document into smaller chunks while keeping paragraphs intact."""
     blocks = claude_doc["source"]["content"]
     current_chunk = []
     current_token_count = 0
     chunks = []
     
     for block in blocks:
-        # Rough token estimation (4 chars per token on average)
-        block_tokens = len(block["text"]) // 4
+        # Rough token estimation (3 chars per token on average)
+        block_tokens = len(block["text"]) // 3
         
         if current_token_count + block_tokens > max_tokens and current_chunk:
             new_doc = {
@@ -158,8 +158,22 @@ def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 150000) -> Li
             current_chunk = []
             current_token_count = 0
         
-        current_chunk.append(block)
-        current_token_count += block_tokens
+        # If a single block is too large, split it further
+        if block_tokens > max_tokens:
+            words = block["text"].split()
+            current_text = ""
+            for word in words:
+                if len(current_text + " " + word) // 3 > max_tokens:
+                    current_chunk.append({"type": "text", "text": current_text})
+                    current_token_count = 0
+                    current_text = word
+                else:
+                    current_text += " " + word if current_text else word
+            if current_text:
+                current_chunk.append({"type": "text", "text": current_text})
+        else:
+            current_chunk.append(block)
+            current_token_count += block_tokens
     
     if current_chunk:
         new_doc = {
