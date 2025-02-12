@@ -135,17 +135,17 @@ def load_single_index(index_dir: Path) -> Tuple[List[Dict[str, Any]], np.ndarray
     parsha = metadata["paragraphs"][0]["parsha"]
     return metadata["paragraphs"], embeddings, chumash, parsha
 
-def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 50000) -> List[Dict[str, Any]]:
+def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 30000) -> List[Dict[str, Any]]:
     """Split document into smaller chunks while keeping paragraphs intact."""
     blocks = claude_doc["source"]["content"]
     current_chunk = []
     current_token_count = 0
     chunks = []
-    
+
     for block in blocks:
-        # Rough token estimation (3 chars per token on average)
+        # More conservative token estimation (3 chars per token)
         block_tokens = len(block["text"]) // 3
-        
+
         if current_token_count + block_tokens > max_tokens and current_chunk:
             new_doc = {
                 "type": "document",
@@ -157,14 +157,22 @@ def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 50000) -> Lis
             chunks.append(new_doc)
             current_chunk = []
             current_token_count = 0
-        
-        # If a single block is too large, split it further
+
         if block_tokens > max_tokens:
+            # Split large blocks into smaller ones
             words = block["text"].split()
             current_text = ""
             for word in words:
                 if len(current_text + " " + word) // 3 > max_tokens:
                     current_chunk.append({"type": "text", "text": current_text})
+                    chunks.append({
+                        "type": "document",
+                        "source": {"type": "content", "content": current_chunk.copy()},
+                        "title": claude_doc["title"],
+                        "context": claude_doc["context"],
+                        "citations": claude_doc["citations"]
+                    })
+                    current_chunk = []
                     current_token_count = 0
                     current_text = word
                 else:
@@ -174,7 +182,7 @@ def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 50000) -> Lis
         else:
             current_chunk.append(block)
             current_token_count += block_tokens
-    
+
     if current_chunk:
         new_doc = {
             "type": "document",
@@ -184,7 +192,7 @@ def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 50000) -> Lis
             "citations": claude_doc["citations"]
         }
         chunks.append(new_doc)
-    
+
     return chunks
 
 def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> str:
@@ -193,18 +201,18 @@ def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> str:
         client = anthropic.Anthropic()
         doc_chunks = split_claude_doc(claude_doc)
         all_analyses = []
-        
+
         for i, chunk in enumerate(doc_chunks, 1):
             prompt = f"{json.dumps(chunk, indent=2)}\n\nPlease analyze these Torah passages (Part {i} of {len(doc_chunks)}) in relation to the query: {query}. " \
                      "Provide insights about the connections between the passages and explain their relevance to the query. " \
                      "Use citations to support your analysis."
-            
+
             response = client.messages.create(
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=4096,
                 messages=[{"role": "user", "content": prompt}]
             )
-            
+
             if response and response.content:
                 if isinstance(response.content, list):
                     analysis = "\n".join(msg.text if hasattr(msg, "text") else msg.get("text", "") 
@@ -212,7 +220,7 @@ def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> str:
                 else:
                     analysis = response.content
                 all_analyses.append(f"=== Analysis Part {i} of {len(doc_chunks)} ===\n{analysis.strip()}")
-        
+
         return "\n\n".join(all_analyses)
     except Exception as e:
         logger.error(f"Error calling Claude API: {e}")
