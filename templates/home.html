@@ -142,7 +142,7 @@
         bookSelect.addEventListener('change', function() {
             const selectedBook = this.value;
             parshaSelect.innerHTML = '<option value="">Select a Parsha</option>';
-            
+
             if (selectedBook && torahStructure[selectedBook]) {
                 parshaSelect.disabled = false;
                 torahStructure[selectedBook].parshiot.forEach(parsha => {
@@ -160,10 +160,10 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
-            
+
             document.getElementById('loading').style.display = 'block';
             document.getElementById('results').innerHTML = '';
-            
+
             try {
                 const response = await fetch('/api/search', {
                     method: 'POST',
@@ -172,7 +172,7 @@
                     },
                     body: JSON.stringify(data),
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Search request failed');
                 }
@@ -185,7 +185,7 @@
                            <pre style="white-space: pre-wrap; word-wrap: break-word;">${result.analysis.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
                        </div>`
                     : '';
-                    
+
                 document.getElementById('loading').style.display = 'none';
                 resultsDiv.innerHTML = `
                     <h2>Search Results</h2>

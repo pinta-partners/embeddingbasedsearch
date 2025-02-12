@@ -123,7 +123,7 @@ def prepare_search_results(matches: List[Tuple[Dict[str, Any], float, str, str]]
     }
     return "\n".join(text_content), claude_doc
 
-async def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Optional[str] = None, top_k: int = 20, skip_claude: bool = False) -> Tuple[str, Dict[str, Any]]:
+def search_and_analyze(query: str, chumash: Optional[str] = None, parsha: Optional[str] = None, top_k: int = 20, skip_claude: bool = False) -> Tuple[str, Dict[str, Any]]:
     """Searches for similar paragraphs and optionally uses Claude for analysis."""
     try:
         sources_data = load_search_data(chumash, parsha)
