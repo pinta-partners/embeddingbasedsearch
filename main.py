@@ -135,50 +135,71 @@ def load_single_index(index_dir: Path) -> Tuple[List[Dict[str, Any]], np.ndarray
     parsha = metadata["paragraphs"][0]["parsha"]
     return metadata["paragraphs"], embeddings, chumash, parsha
 
+def split_claude_doc(claude_doc: Dict[str, Any], max_tokens: int = 150000) -> List[Dict[str, Any]]:
+    """Split document into chunks while keeping paragraphs intact."""
+    blocks = claude_doc["source"]["content"]
+    current_chunk = []
+    current_token_count = 0
+    chunks = []
+    
+    for block in blocks:
+        # Rough token estimation (4 chars per token on average)
+        block_tokens = len(block["text"]) // 4
+        
+        if current_token_count + block_tokens > max_tokens and current_chunk:
+            new_doc = {
+                "type": "document",
+                "source": {"type": "content", "content": current_chunk.copy()},
+                "title": f"{claude_doc['title']} (Part {len(chunks) + 1})",
+                "context": claude_doc["context"],
+                "citations": claude_doc["citations"]
+            }
+            chunks.append(new_doc)
+            current_chunk = []
+            current_token_count = 0
+        
+        current_chunk.append(block)
+        current_token_count += block_tokens
+    
+    if current_chunk:
+        new_doc = {
+            "type": "document",
+            "source": {"type": "content", "content": current_chunk},
+            "title": f"{claude_doc['title']} (Part {len(chunks) + 1})",
+            "context": claude_doc["context"],
+            "citations": claude_doc["citations"]
+        }
+        chunks.append(new_doc)
+    
+    return chunks
+
 def get_claude_analysis(query: str, claude_doc: Dict[str, Any]) -> str:
-    """
-    Get analysis from Claude API using the search results.
-    """
+    """Get analysis from Claude API using the search results."""
     try:
         client = anthropic.Anthropic()
-        # Combine the document and instruction into a single prompt string
-        prompt = f"{json.dumps(claude_doc, indent=2)}\n\nPlease analyze these Torah passages in relation to the query: {query}. " \
-                 "Provide insights about the connections between the passages and explain their relevance to the query. " \
-                 "Use citations to support your analysis."
-        logger.debug("Sending prompt to Claude API:")
-        logger.debug(prompt)
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=4096,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
-        logger.debug("Received response from Claude API:")
-        logger.debug(response)
-
-        if response and response.content:
-            if isinstance(response.content, list):
-                # For each message, try attribute access first; if that fails, try dict.get
-                analysis_parts = []
-                for msg in response.content:
-                    if hasattr(msg, "text"):
-                        analysis_parts.append(msg.text)
-                    elif isinstance(msg, dict):
-                        analysis_parts.append(msg.get("text", ""))
-                    else:
-                        analysis_parts.append("")
-                analysis = "\n".join(analysis_parts)
-            else:
-                analysis = response.content
-            logger.info("Claude analysis received successfully")
-            return analysis.strip()
-        else:
-            logger.warning("No analysis content received from Claude API")
-            return "No analysis available"
+        doc_chunks = split_claude_doc(claude_doc)
+        all_analyses = []
+        
+        for i, chunk in enumerate(doc_chunks, 1):
+            prompt = f"{json.dumps(chunk, indent=2)}\n\nPlease analyze these Torah passages (Part {i} of {len(doc_chunks)}) in relation to the query: {query}. " \
+                     "Provide insights about the connections between the passages and explain their relevance to the query. " \
+                     "Use citations to support your analysis."
+            
+            response = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            if response and response.content:
+                if isinstance(response.content, list):
+                    analysis = "\n".join(msg.text if hasattr(msg, "text") else msg.get("text", "") 
+                                       for msg in response.content)
+                else:
+                    analysis = response.content
+                all_analyses.append(f"=== Analysis Part {i} of {len(doc_chunks)} ===\n{analysis.strip()}")
+        
+        return "\n\n".join(all_analyses)
     except Exception as e:
         logger.error(f"Error calling Claude API: {e}")
         logger.debug(traceback.format_exc())
