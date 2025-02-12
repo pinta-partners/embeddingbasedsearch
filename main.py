@@ -28,7 +28,7 @@ def home():
     return render_template("home.html")
 
 @app.route("/search", methods=["POST"])
-async def handle_search():
+def handle_search():
     try:
         data = request.get_json()
         if not data:
@@ -44,7 +44,7 @@ async def handle_search():
         
         from searcher import search_and_analyze
         
-        result = await search_and_analyze(query, chumash, parsha, top_k, skip_claude=True)
+        result = search_and_analyze(query, chumash, parsha, top_k, skip_claude=True)
         
         if not result:
             return jsonify({"error": "No results found"}), 404
