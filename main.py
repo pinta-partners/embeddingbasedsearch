@@ -44,14 +44,10 @@ def handle_search():
         
         from searcher import search_and_analyze
         
-        # Create event loop if needed
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        async def run_search():
+            return await search_and_analyze(query, chumash, parsha, top_k, skip_claude=True)
             
-        result = loop.run_until_complete(search_and_analyze(query, chumash, parsha, top_k, skip_claude=True))
+        result = asyncio.run(run_search())
         
         if not result:
             return jsonify({"error": "No results found"}), 404
@@ -67,4 +63,4 @@ def handle_search():
 
 if __name__ == "__main__":
     load_dotenv()
-    app.run(host='0.0.0.0', port=3000)
+    app.run(host='0.0.0.0', port=3000, threaded=True)
