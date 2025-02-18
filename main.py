@@ -247,11 +247,9 @@ def search_and_analyze(query: str, chumash: str, parsha: str, top_k: int):
         })
 
     # 7. Combine analysis from all chunks
-    combined_analysis = "\n\n".join([item["analysis"] for item in analysis_results])
     final_analysis = {
         "chunk_details": chunk_details,
-        "analysis_per_chunk": analysis_results,
-        "combined_analysis": combined_analysis
+        "analysis_per_chunk": analysis_results
     }
 
     combined = {
