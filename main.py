@@ -141,21 +141,36 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
                 "success": True
             }
 
+            # Handle the content from Claude's response
             for block in response.content:
-                if hasattr(block, 'text'):
+                if isinstance(block, str):
+                    # Handle plain string content
+                    block_data = {
+                        "text": block,
+                        "citations": []
+                    }
+                    analysis_data["analysis_blocks"].append(block_data)
+                elif hasattr(block, 'text'):
+                    # Handle structured content with potential citations
                     block_data = {
                         "text": block.text,
                         "citations": []
                     }
-
-                    citations = getattr(block, 'citations', [])
-                    if citations:
-                        for citation in citations:
-                            if hasattr(citation, 'quote'):
+                    
+                    # Extract citations if they exist
+                    if hasattr(block, 'citations') and block.citations:
+                        for citation in block.citations:
+                            if hasattr(citation, 'text'):
+                                block_data["citations"].append({
+                                    "cited_text": citation.text,
+                                    "start_index": 0,
+                                    "end_index": 0
+                                })
+                            elif hasattr(citation, 'quote'):
                                 block_data["citations"].append({
                                     "cited_text": citation.quote,
-                                    "start_index": citation.start_char_index if hasattr(citation, 'start_char_index') else 0,
-                                    "end_index": citation.end_char_index if hasattr(citation, 'end_char_index') else 0
+                                    "start_index": 0,
+                                    "end_index": 0
                                 })
 
                     analysis_data["analysis_blocks"].append(block_data)
