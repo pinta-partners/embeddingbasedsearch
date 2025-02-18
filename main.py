@@ -121,27 +121,30 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
 
         # The user’s question goes in a separate "text" block.
         # We pass the doc + question in one message.
-        user_message_content = [
-            doc_content,
-            {
-                "type": "text",
-                "text": (
-                    f"Please analyze this Torah chunk in relation to the query: \"{query}\".\n"
-                    "Provide insights about the connections and relevance of these passages.\n"
-                    "Use citations to support your analysis."
-                )
-            }
-        ]
-
-        logger.debug("Sending content to Claude with citations enabled...")
-
+        # Create message following official structure
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",  # or whichever model you prefer
+            model="claude-3-5-sonnet-20241022",
             max_tokens=1024,
             messages=[
                 {
-                    "role": "user",
-                    "content": user_message_content
+                    "role": "user", 
+                    "content": [
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "text",
+                                "media_type": "text/plain",
+                                "data": chunk
+                            },
+                            "title": chunk_title,
+                            "context": "Torah analysis context",
+                            "citations": {"enabled": True}
+                        },
+                        {
+                            "type": "text",
+                            "text": f"Please analyze this Torah chunk in relation to the query: \"{query}\".\nProvide insights about the connections and relevance of these passages.\nUse citations to support your analysis."
+                        }
+                    ]
                 }
             ],
             stream=False
