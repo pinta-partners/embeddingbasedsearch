@@ -1,0 +1,107 @@
+According to the API guide, when citations are enabled, the response should include:
+
+The exact cited text from the source document
+Clear identification of cited passages
+Location information for each citation
+
+Here's how we should modify the code to properly handle and display the citations:
+
+First, modify the get_claude_analysis function to preserve the full citation structure:
+
+pythonCopydef get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
+    # ... existing setup code ...
+    
+    # The response.content will contain structured blocks like:
+    # [
+    #    {"type": "text", "text": "Based on the text..."},
+    #    {
+    #        "type": "text",
+    #        "text": "specific analysis point",
+    #        "citations": [{
+    #            "type": "content_block_location",
+    #            "cited_text": "actual Hebrew text being cited",
+    #            "document_index": 0,
+    #            "start_block_index": 0,
+    #            "end_block_index": 1
+    #        }]
+    #    }
+    # ]
+    
+    return {
+        "analysis_blocks": response.content,
+        "raw_text": chunk  # Include the original Hebrew text for reference
+    }
+
+Then update the frontend display code to properly show citations:
+
+javascriptCopyfunction displayAnalysis(analysis) {
+    let html = '<div class="analysis">';
+    
+    for (const block of analysis.analysis_blocks) {
+        if (block.citations) {
+            html += `<div class="analysis-block">
+                <p class="analysis-text">${block.text}</p>
+                <div class="citations">
+                    ${block.citations.map(citation => `
+                        <div class="citation">
+                            <div class="hebrew-text" dir="rtl">
+                                ${citation.cited_text}
+                            </div>
+                            <div class="citation-context">
+                                Source: ${citation.document_title || 'Torah Text'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        } else {
+            html += `<p>${block.text}</p>`;
+        }
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+Add CSS styling:
+
+htmlCopy<style>
+    .analysis-block {
+        margin: 1em 0;
+        padding: 1em;
+        border: 1px solid #eee;
+    }
+    
+    .hebrew-text {
+        font-family: 'Times New Roman', serif;
+        font-size: 1.2em;
+        background: #f5f5f5;
+        padding: 1em;
+        margin: 0.5em 0;
+    }
+    
+    .citation {
+        border-left: 3px solid #007bff;
+        padding-left: 1em;
+        margin: 1em 0;
+    }
+</style>
+This would result in an output that:
+
+Shows Claude's analysis
+For each citation, displays the actual Hebrew text being referenced
+Properly handles RTL Hebrew text
+Provides clear visual separation between analysis and citations
+
+The output would look more like:
+CopyAnalysis: The text discusses the importance of separation...
+
+[Citation]:
+העם אשר בקרבך כי חטא העם הזה חטאה גדלה
+Context: Discussing the separation of the people
+
+Analysis: This demonstrates how...
+
+[Citation]:
+ויאמר משה אל העם אל תיראו
+Context: Showing the response to fear
