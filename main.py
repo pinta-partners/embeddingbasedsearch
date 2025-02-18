@@ -97,7 +97,11 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
     enabling citations so Claude can cite relevant text.
     """
     try:
+        logger.debug("Initializing Anthropic client...")
         client = anthropic.Anthropic()  # Reads ANTHROPIC_API_KEY from env
+        if not os.getenv('ANTHROPIC_API_KEY'):
+            logger.error("ANTHROPIC_API_KEY environment variable is not set")
+            return "Error: API key not configured"
 
         # Build a custom content document. 
         # Each chunk is placed in a single "content block."
