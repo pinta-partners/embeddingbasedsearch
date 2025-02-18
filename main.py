@@ -135,14 +135,19 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
         logger.debug(response)
 
         if response and hasattr(response, 'content'):
-            formatted_blocks = []
+            analysis_data = {
+                "analysis_blocks": [],
+                "raw_text": chunk,
+                "success": True
+            }
+
             for block in response.content:
                 if hasattr(block, 'text'):
                     block_data = {
                         "text": block.text,
                         "citations": []
                     }
-                    
+
                     citations = getattr(block, 'citations', [])
                     if citations:
                         for citation in citations:
@@ -152,14 +157,11 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
                                     "start_index": citation.start_char_index,
                                     "end_index": citation.end_char_index
                                 })
-                    
-                    formatted_blocks.append(block_data)
 
-            return {
-                "analysis_blocks": formatted_blocks,
-                "raw_text": chunk,
-                "success": True
-            }
+                    analysis_data["analysis_blocks"].append(block_data)
+
+            logger.info("Claude analysis with citations received successfully")
+            return analysis_data
         else:
             logger.warning("Could not extract content from Claude API response")
             return {"error": "No analysis available", "success": False}
