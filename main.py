@@ -164,10 +164,10 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
                     # Add citation metadata if present
                     if citations:
                         for citation in citations:
-                            text = text.replace(
-                                citation.quote,
-                                f'"{citation.quote}" [cited from {citation.start_index}-{citation.end_index}]'
-                            )
+                            # Extract the quoted text from the original text using indices
+                            if hasattr(citation, 'start_char_index') and hasattr(citation, 'end_char_index'):
+                                quoted_text = text[citation.start_char_index:citation.end_char_index]
+                                text = f"{text[:citation.start_char_index]}[{quoted_text}]{text[citation.end_char_index:]}"
                     
                     text_blocks.append(text)
             
