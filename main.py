@@ -152,10 +152,25 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
         logger.debug("Claude raw response:")
         logger.debug(response)
 
-        # Extract the content from the message
+        # Extract the content from the message with citations
         if response and hasattr(response, 'content'):
-            # Get the text content from all text blocks
-            text_blocks = [block.text for block in response.content if hasattr(block, 'text')]
+            text_blocks = []
+            for block in response.content:
+                if hasattr(block, 'text'):
+                    # Get citations if they exist
+                    citations = getattr(block, 'citations', [])
+                    text = block.text
+                    
+                    # Add citation metadata if present
+                    if citations:
+                        for citation in citations:
+                            text = text.replace(
+                                citation.quote,
+                                f'"{citation.quote}" [cited from {citation.start_index}-{citation.end_index}]'
+                            )
+                    
+                    text_blocks.append(text)
+            
             analysis = '\n\n'.join(text_blocks)
             logger.info("Claude analysis with citations received successfully")
             return analysis.strip()
