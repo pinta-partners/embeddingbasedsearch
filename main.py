@@ -151,11 +151,11 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
                     citations = getattr(block, 'citations', [])
                     if citations:
                         for citation in citations:
-                            if hasattr(citation, 'start_char_index') and hasattr(citation, 'end_char_index'):
+                            if hasattr(citation, 'quote'):
                                 block_data["citations"].append({
-                                    "cited_text": block.text[citation.start_char_index:citation.end_char_index],
-                                    "start_index": citation.start_char_index,
-                                    "end_index": citation.end_char_index
+                                    "cited_text": citation.quote,
+                                    "start_index": citation.start_char_index if hasattr(citation, 'start_char_index') else 0,
+                                    "end_index": citation.end_char_index if hasattr(citation, 'end_char_index') else 0
                                 })
 
                     analysis_data["analysis_blocks"].append(block_data)
