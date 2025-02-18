@@ -91,19 +91,18 @@ def save_results_to_file(data: dict) -> str:
 # -----------------------------
 # Claude Analysis Function (with Citations)
 # -----------------------------
-def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
+def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
     """
     Calls Anthropic's Claude with a custom content document for the chunk,
     enabling citations so Claude can cite relevant text.
     """
     try:
         logger.debug("Initializing Anthropic client...")
-        client = anthropic.Anthropic()  # Reads ANTHROPIC_API_KEY from env
+        client = anthropic.Anthropic()
         if not os.getenv('ANTHROPIC_API_KEY'):
             logger.error("ANTHROPIC_API_KEY environment variable is not set")
-            return "Error: API key not configured"
+            return {"error": "API key not configured"}
 
-        # Create message with document and question using official structure
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1024,
@@ -135,35 +134,39 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
         logger.debug("Claude raw response:")
         logger.debug(response)
 
-        # Extract the content from the message with citations
         if response and hasattr(response, 'content'):
-            text_blocks = []
+            formatted_blocks = []
             for block in response.content:
                 if hasattr(block, 'text'):
-                    # Get citations if they exist
+                    block_data = {
+                        "text": block.text,
+                        "citations": []
+                    }
+                    
                     citations = getattr(block, 'citations', [])
-                    text = block.text
-
-                    # Add citation metadata if present
                     if citations:
                         for citation in citations:
-                            # Extract the quoted text from the original text using indices
                             if hasattr(citation, 'start_char_index') and hasattr(citation, 'end_char_index'):
-                                quoted_text = text[citation.start_char_index:citation.end_char_index]
-                                text = f"{text[:citation.start_char_index]}[{quoted_text}]{text[citation.end_char_index:]}"
+                                block_data["citations"].append({
+                                    "cited_text": block.text[citation.start_char_index:citation.end_char_index],
+                                    "start_index": citation.start_char_index,
+                                    "end_index": citation.end_char_index
+                                })
+                    
+                    formatted_blocks.append(block_data)
 
-                    text_blocks.append(text)
-
-            analysis = '\n\n'.join(text_blocks)
-            logger.info("Claude analysis with citations received successfully")
-            return analysis.strip()
+            return {
+                "analysis_blocks": formatted_blocks,
+                "raw_text": chunk,
+                "success": True
+            }
         else:
             logger.warning("Could not extract content from Claude API response")
-            return "No analysis available"
+            return {"error": "No analysis available", "success": False}
     except Exception as e:
         logger.error(f"Error calling Claude API: {e}")
         logger.debug(traceback.format_exc())
-        return f"Error calling Claude API: {str(e)}"
+        return {"error": str(e), "success": False}
 
 # -----------------------------
 # Main Search & Analyze Function

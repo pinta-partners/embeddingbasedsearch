@@ -149,12 +149,53 @@
           // Deconstruct the response
           const { results, analysis, file_id } = result;
 
-          // Display the raw results and combined analysis
+          // Display the raw results and combined analysis with citations
           let html = `
+            <style>
+              .analysis-block {
+                margin: 1em 0;
+                padding: 1em;
+                border: 1px solid #eee;
+                border-radius: 4px;
+              }
+              .hebrew-text {
+                font-family: 'Times New Roman', serif;
+                font-size: 1.2em;
+                background: #f5f5f5;
+                padding: 1em;
+                margin: 0.5em 0;
+                direction: rtl;
+              }
+              .citation {
+                border-left: 3px solid #4CAF50;
+                padding-left: 1em;
+                margin: 1em 0;
+              }
+            </style>
             <h2>Search Results</h2>
             <pre>${JSON.stringify(results, null, 2)}</pre>
-            <h2>Combined Analysis</h2>
-            <pre>${analysis.combined_analysis}</pre>
+            <h2>Analysis</h2>
+            <div class="analysis">
+              ${analysis.analysis_per_chunk.map(chunk => 
+                chunk.analysis.analysis_blocks ? 
+                  chunk.analysis.analysis_blocks.map(block => `
+                    <div class="analysis-block">
+                      <p class="analysis-text">${block.text}</p>
+                      ${block.citations ? 
+                        `<div class="citations">
+                          ${block.citations.map(citation => `
+                            <div class="citation">
+                              <div class="hebrew-text">${citation.cited_text}</div>
+                            </div>
+                          `).join('')}
+                        </div>` 
+                        : ''
+                      }
+                    </div>
+                  `).join('') 
+                  : `<p>${chunk.analysis}</p>`
+              ).join('')}
+            </div>
             <p><a href="/download/${file_id}" download>Download Full JSON</a></p>
           `;
 
