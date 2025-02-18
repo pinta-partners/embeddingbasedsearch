@@ -176,25 +176,29 @@
             <pre>${JSON.stringify(results, null, 2)}</pre>
             <h2>Analysis</h2>
             <div class="analysis">
-              ${analysis.analysis_per_chunk.map(chunk => 
-                chunk.analysis.analysis_blocks ? 
-                  chunk.analysis.analysis_blocks.map(block => `
-                    <div class="analysis-block">
-                      <p class="analysis-text">${block.text}</p>
-                      ${block.citations ? 
-                        `<div class="citations">
-                          ${block.citations.map(citation => `
-                            <div class="citation">
-                              <div class="hebrew-text">${citation.cited_text}</div>
-                            </div>
-                          `).join('')}
-                        </div>` 
-                        : ''
-                      }
-                    </div>
-                  `).join('') 
-                  : `<p>${chunk.analysis}</p>`
-              ).join('')}
+              ${analysis.analysis_per_chunk.map(chunk => {
+                if (chunk.analysis && chunk.analysis.analysis_blocks) {
+                    return chunk.analysis.analysis_blocks.map(block => `
+                        <div class="analysis-block">
+                            <p class="analysis-text">${block.text || ''}</p>
+                            ${block.citations && block.citations.length > 0 ? 
+                                `<div class="citations">
+                                    ${block.citations.map(citation => `
+                                        <div class="citation">
+                                            <div class="hebrew-text">${citation.cited_text || ''}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>` 
+                                : ''
+                            }
+                        </div>
+                    `).join('');
+                } else if (typeof chunk.analysis === 'object') {
+                    return `<p>${JSON.stringify(chunk.analysis)}</p>`;
+                } else {
+                    return `<p>${chunk.analysis || 'No analysis available'}</p>`;
+                }
+            }).join('')}
             </div>
             <p><a href="/download/${file_id}" download>Download Full JSON</a></p>
           `;
