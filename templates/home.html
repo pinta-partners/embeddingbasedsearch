@@ -1,204 +1,185 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Torah Search</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .spinner {
-            display: none;
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: bold;
-        }
-        select, input {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #results {
-            margin-top: 2rem;
-            padding: 1rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .analysis-container {
-            max-width: 100%;
-            overflow-x: auto;
-            margin-top: 1rem;
-        }
-        .analysis-container pre {
-            margin: 0;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Torah Search Engine</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      max-width: 600px;
+      margin: auto;
+      padding: 10px;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input[type="text"], select, input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin: 6px 0 12px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #results {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 10px;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .spinner {
+      display: none;
+      margin: 20px auto;
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
-    <h1>Torah Search Engine</h1>
-    <form id="searchForm">
-        <div class="form-group">
-            <label for="query">Search Query:</label>
-            <input type="text" id="query" name="query" required>
-        </div>
+  <h1>Torah Search Engine</h1>
+  <form id="searchForm">
+    <label for="query">Search Query:</label>
+    <input type="text" id="query" name="query" required>
 
-        <div class="form-group">
-            <label for="book">Select Book:</label>
-            <select id="book" name="book" required>
-                <option value="">Select a Book</option>
-                <option value="bereishis">בראשית / Bereishis</option>
-                <option value="shemos">שמות / Shemos</option>
-                <option value="vayikra">ויקרא / Vayikra</option>
-                <option value="bamidbar">במדבר / Bamidbar</option>
-                <option value="devarim">דברים / Devarim</option>
-            </select>
-        </div>
+    <label for="chumash">Select Book (Chumash):</label>
+    <select id="chumash" name="chumash" required>
+      <option value="">Select a Book</option>
+      <option value="Bereshit">Bereshit / בראשית</option>
+      <option value="Shemot">Shemot / שמות</option>
+      <option value="Vayikra">Vayikra / ויקרא</option>
+      <option value="Bamidbar">Bamidbar / במדבר</option>
+      <option value="Devarim">Devarim / דברים</option>
+    </select>
 
-        <div class="form-group">
-            <label for="parsha">Select Parsha:</label>
-            <select id="parsha" name="parsha" disabled>
-                <option value="">First select a book</option>
-            </select>
-        </div>
+    <label for="parsha">Select Parsha:</label>
+    <select id="parsha" name="parsha" required>
+      <option value="">Select a Parsha</option>
+      <!-- Parsha options will be populated based on the selected book below -->
+    </select>
 
-        <div class="form-group">
-            <label for="topK">Number of Results:</label>
-            <input type="number" id="topK" name="topK" value="10" min="1" max="100">
-        </div>
+    <label for="top_k">Number of Results:</label>
+    <input type="number" id="top_k" name="top_k" value="10" min="1" max="100">
 
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="skipClaude" name="skipClaude">
-                Skip Claude Analysis
-            </label>
-        </div>
+    <button type="submit">Search</button>
+  </form>
 
-        <button type="submit">Search</button>
-    </form>
+  <div class="spinner" id="loading"></div>
+  <div id="results"></div>
 
-    <div class="spinner" id="loading"></div>
-    <div id="results"></div>
+  <script>
+    const chumashSelect = document.getElementById('chumash');
+    const parshaSelect = document.getElementById('parsha');
 
-    <script>
-        const torahStructure = {
-            bereishis: {
-                name: 'בראשית / Bereishis',
-                parshiot: ['bereshis1', 'bereshis2']
-            },
-            shemos: {
-                name: 'שמות / Shemos',
-                parshiot: ['beshalach1', 'beshalach2', 'bo', 'ki_sisa', 'mishpatim', 'pekudei', 'shemos', 'terumah', 'tetzaveh', 'vaera', 'vayakhel', 'yisro']
-            },
-            vayikra: {
-                name: 'ויקרא / Vayikra',
-                parshiot: ['vayikra1', 'vayikra2']
-            },
-            bamidbar: {
-                name: 'במדבר / Bamidbar',
-                parshiot: ['bamidbar2', 'bmidbar1']
-            },
-            devarim: {
-                name: 'דברים / Devarim',
-                parshiot: ['davraim1']
-            }
-        };
+    // Adjust these based on your file/folder structure
+    const torahStructure = {
+      "Bereshit": ["bereshis1", "bereshis2"],
+      "Shemot": ["beshalach1", "beshalach2", "bo", "ki_sisa", "mishpatim", "pekudei", "shemos", "terumah", "tetzaveh", "vaera", "vayakhel", "yisro"],
+      "Vayikra": ["vayikra1", "vayikra2"],
+      "Bamidbar": ["bamidbar2", "bmidbar1"],
+      "Devarim": ["davraim1"]
+    };
 
-        const bookSelect = document.getElementById('book');
-        const parshaSelect = document.getElementById('parsha');
-
-        bookSelect.addEventListener('change', function() {
-            const selectedBook = this.value;
-            parshaSelect.innerHTML = '<option value="">Select a Parsha</option>';
-
-            if (selectedBook && torahStructure[selectedBook]) {
-                parshaSelect.disabled = false;
-                torahStructure[selectedBook].parshiot.forEach(parsha => {
-                    const option = document.createElement('option');
-                    option.value = parsha;
-                    option.textContent = parsha;
-                    parshaSelect.appendChild(option);
-                });
-            } else {
-                parshaSelect.disabled = true;
-            }
+    // Dynamically populate parsha options based on chosen chumash
+    chumashSelect.addEventListener('change', function() {
+      const book = this.value;
+      parshaSelect.innerHTML = '<option value="">Select a Parsha</option>';
+      if (book && torahStructure[book]) {
+        torahStructure[book].forEach(function(parsha) {
+          const option = document.createElement('option');
+          option.value = parsha;
+          option.textContent = parsha;
+          parshaSelect.appendChild(option);
         });
+      }
+    });
 
-        document.getElementById('searchForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
+    // Handle form submission
+    document.getElementById('searchForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('results').innerHTML = '';
 
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').innerHTML = '';
+      // Gather form data
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
 
-            try {
-                const response = await fetch('/api/search', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Search request failed');
-                }
-
-                const result = await response.json();
-                const resultsDiv = document.getElementById('results');
-                const analysisHtml = result.analysis 
-                    ? `<h2>Claude's Analysis</h2>
-                       <div class="analysis-container">
-                           <pre style="white-space: pre-wrap; word-wrap: break-word;">${JSON.stringify(result.analysis, null, 2)}</pre>
-                       </div>`
-                    : '';
-
-                document.getElementById('loading').style.display = 'none';
-                resultsDiv.innerHTML = `
-                    <h2>Search Results</h2>
-                    <pre>${result.results.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                    ${analysisHtml}
-                `;
-            } catch (error) {
-                console.error('Search error:', error);
-                document.getElementById('results').innerHTML = `
-                    <p style="color: red;">Error performing search: ${error.message}</p>
-                `;
-            }
+      try {
+        // POST the data to /api/search
+        const response = await fetch('/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
         });
-    </script>
+        const result = await response.json();
+        document.getElementById('loading').style.display = 'none';
+
+        // Check for errors
+        if (result.error) {
+          document.getElementById('results').innerHTML = `<p style="color:red;">Error: ${result.error}</p>`;
+        } else {
+          // Deconstruct the response
+          const { results, analysis, file_id } = result;
+
+          // Display the raw results and combined analysis
+          let html = `
+            <h2>Search Results</h2>
+            <pre>${JSON.stringify(results, null, 2)}</pre>
+            <h2>Combined Analysis</h2>
+            <pre>${analysis.combined_analysis}</pre>
+            <p><a href="/download/${file_id}" download>Download Full JSON</a></p>
+          `;
+
+          // If chunk details exist, display each chunk with a download link
+          if (analysis.chunk_details && analysis.chunk_details.length > 0) {
+            html += `<h3>Chunk Files</h3><ul>`;
+            analysis.chunk_details.forEach(detail => {
+              html += `
+                <li>
+                  Tokens: ${detail.tokens} &nbsp;|&nbsp;
+                  <a href="/download/chunk/${detail.chunk_file}" download>Download ${detail.chunk_file}</a>
+                </li>
+              `;
+            });
+            html += `</ul>`;
+          }
+
+          document.getElementById('results').innerHTML = html;
+        }
+      } catch (error) {
+        // Handle fetch/JSON parsing errors
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('results').innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
+      }
+    });
+  </script>
 </body>
 </html>
