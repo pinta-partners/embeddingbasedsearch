@@ -149,13 +149,15 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
         logger.debug("Claude raw response:")
         logger.debug(response)
 
-        # The new library returns a dict with "completion" (the main text).
-        if response and "completion" in response:
-            analysis = response["completion"]
+        # Extract the content from the message
+        if response and hasattr(response, 'content'):
+            # Get the text content from all text blocks
+            text_blocks = [block.text for block in response.content if hasattr(block, 'text')]
+            analysis = '\n\n'.join(text_blocks)
             logger.info("Claude analysis with citations received successfully")
             return analysis.strip()
         else:
-            logger.warning("No 'completion' field in Claude API response.")
+            logger.warning("Could not extract content from Claude API response")
             return "No analysis available"
     except Exception as e:
         logger.error(f"Error calling Claude API: {e}")
