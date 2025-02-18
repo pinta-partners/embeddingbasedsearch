@@ -103,41 +103,24 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
             logger.error("ANTHROPIC_API_KEY environment variable is not set")
             return "Error: API key not configured"
 
-        # Build a custom content document. 
-        # Each chunk is placed in a single "content block."
-        # 'citations': {"enabled": True} triggers Claude's citation system.
-        doc_content = {
-            "type": "document",
-            "source": {
-                "type": "content",
-                "content": [
-                    {"type": "text", "text": chunk}
-                ]
-            },
-            "title": chunk_title,
-            "context": "Torah chunk for analysis",
-            "citations": {"enabled": True}
-        }
-
-        # The user’s question goes in a separate "text" block.
-        # We pass the doc + question in one message.
-        # Create message following official structure
+        # Create message with document and question using official structure
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1024,
             messages=[
                 {
-                    "role": "user", 
+                    "role": "user",
                     "content": [
                         {
-                            "type": "document",
+                            "type": "document", 
                             "source": {
-                                "type": "text",
-                                "media_type": "text/plain",
-                                "data": chunk
+                                "type": "content",
+                                "content": [
+                                    {"type": "text", "text": chunk}
+                                ]
                             },
                             "title": chunk_title,
-                            "context": "Torah analysis context",
+                            "context": "Torah chunk for analysis",
                             "citations": {"enabled": True}
                         },
                         {
@@ -160,7 +143,7 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
                     # Get citations if they exist
                     citations = getattr(block, 'citations', [])
                     text = block.text
-                    
+
                     # Add citation metadata if present
                     if citations:
                         for citation in citations:
@@ -168,9 +151,9 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> str:
                             if hasattr(citation, 'start_char_index') and hasattr(citation, 'end_char_index'):
                                 quoted_text = text[citation.start_char_index:citation.end_char_index]
                                 text = f"{text[:citation.start_char_index]}[{quoted_text}]{text[citation.end_char_index:]}"
-                    
+
                     text_blocks.append(text)
-            
+
             analysis = '\n\n'.join(text_blocks)
             logger.info("Claude analysis with citations received successfully")
             return analysis.strip()
