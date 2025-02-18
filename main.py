@@ -14,7 +14,7 @@ from transformers import AutoTokenizer, AutoModel
 # from dotenv import load_dotenv
 # load_dotenv()
 
-import anthropic  # pip install anthropic
+import anthropic
 
 # Setup basic logging
 logging.basicConfig(level=logging.DEBUG)
@@ -88,13 +88,39 @@ def save_results_to_file(data: dict) -> str:
         json.dump(data, f, ensure_ascii=False, indent=2)
     return unique_id
 
-# -----------------------------
-# Claude Analysis Function (with Citations)
-# -----------------------------
+def split_into_paragraphs(text: str) -> list:
+    """
+    Split text into paragraphs, handling various delimiter types and cleaning up the results.
+    """
+    # First split by double newlines (standard paragraph breaks)
+    paras = [p.strip() for p in text.split("\n\n")]
+
+    # Then handle single newlines that might indicate paragraphs
+    processed_paras = []
+    for para in paras:
+        # If the paragraph contains single newlines, check if they're paragraph breaks
+        if "\n" in para:
+            lines = para.split("\n")
+            current = []
+            for line in lines:
+                line = line.strip()
+                if not line:  # Empty line indicates paragraph break
+                    if current:
+                        processed_paras.append(" ".join(current))
+                        current = []
+                else:
+                    current.append(line)
+            if current:  # Add the last paragraph if exists
+                processed_paras.append(" ".join(current))
+        else:
+            processed_paras.append(para)
+
+    # Filter out empty paragraphs and normalize whitespace
+    return [" ".join(p.split()) for p in processed_paras if p.strip()]
+
 def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
     """
-    Calls Anthropic's Claude with a custom content document for the chunk,
-    enabling citations so Claude can cite relevant text.
+    Get analysis from Claude with proper citation support.
     """
     try:
         logger.debug("Initializing Anthropic client...")
@@ -102,6 +128,12 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
         if not os.getenv('ANTHROPIC_API_KEY'):
             logger.error("ANTHROPIC_API_KEY environment variable is not set")
             return {"error": "API key not configured"}
+
+        # Split the chunk into paragraphs with improved handling
+        paragraphs = split_into_paragraphs(chunk)
+
+        # Create content blocks from paragraphs
+        content_blocks = [{"type": "text", "text": para} for para in paragraphs]
 
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
@@ -114,9 +146,7 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
                             "type": "document", 
                             "source": {
                                 "type": "content",
-                                "content": [
-                                    {"type": "text", "text": chunk}
-                                ]
+                                "content": content_blocks
                             },
                             "title": chunk_title,
                             "context": "Torah chunk for analysis",
@@ -156,19 +186,20 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
                         "text": block.text,
                         "citations": []
                     }
-                    
+
                     # Extract citations if they exist
                     if hasattr(block, 'citations') and block.citations:
                         for citation in block.citations:
-                            if hasattr(citation, 'text'):
+                            if hasattr(citation, 'type') and citation.type == 'content_block_location':
+                                citation_data = {
+                                    "cited_text": citation.cited_text,
+                                    "start_block_index": citation.start_block_index,
+                                    "end_block_index": citation.end_block_index
+                                }
+                                block_data["citations"].append(citation_data)
+                            elif hasattr(citation, 'text'):
                                 block_data["citations"].append({
                                     "cited_text": citation.text,
-                                    "start_index": 0,
-                                    "end_index": 0
-                                })
-                            elif hasattr(citation, 'quote'):
-                                block_data["citations"].append({
-                                    "cited_text": citation.quote,
                                     "start_index": 0,
                                     "end_index": 0
                                 })
@@ -185,9 +216,6 @@ def get_claude_analysis(query: str, chunk: str, chunk_title: str) -> dict:
         logger.debug(traceback.format_exc())
         return {"error": str(e), "success": False}
 
-# -----------------------------
-# Main Search & Analyze Function
-# -----------------------------
 def search_and_analyze(query: str, chumash: str, parsha: str, top_k: int):
     embeddings, metadata = load_embeddings_and_metadata(chumash, parsha)
     logger.debug(f"Loaded embeddings with shape {embeddings.shape} and {len(metadata)} metadata entries.")
@@ -322,5 +350,4 @@ def download_chunk_file(filename):
     return send_file(file_path, as_attachment=True, download_name=filename)
 
 if __name__ == "__main__":
-    # If using .env, ensure load_dotenv() is called
     app.run(host="0.0.0.0", port=3000)
